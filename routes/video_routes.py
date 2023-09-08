@@ -1,5 +1,3 @@
-# routes/video_routes.py
-
 import cloudinary
 import os
 from flask import Blueprint, request, jsonify
@@ -17,22 +15,31 @@ cloudinary.config(
 
 @video_bp.route('/upload', methods=['POST'])
 def upload_video():
-    data = request.get_json()
-    user_id = data.get('user_id')
-    video_url = data.get('video_url')
-    title = data.get('title')
-    description = data.get('description')
+    user_id = request.form.get('user_id')
+    title = request.form.get('title')
+    description = request.form.get('description')
 
     user = User.query.get(user_id)
     if not user:
         return jsonify(message='User not found'), 404
 
-    # Upload the video to Cloudinary
+    # Check if a file was uploaded
+    if 'video' not in request.files:
+        return jsonify(message='No video file provided'), 400
+
+    video_file = request.files['video']
+
+    # Check if the file has a valid extension (e.g., mp4)
+    allowed_extensions = {'mp4', 'avi', 'mkv'}  # Add more as needed
+    if '.' in video_file.filename and video_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        return jsonify(message='Invalid file extension'), 400
+
+    # Upload the video file to Cloudinary
     try:
-        upload_response = cloudinary.uploader.upload(video_url)
+        upload_response = cloudinary.uploader.upload(video_file)
         cloudinary_url = upload_response['secure_url']
     except Exception as e:
-        return jsonify(message='Failed to upload video to Cloudinary'), 500
+        return jsonify(message='Failed to upload video'), 500
 
     new_video = Video(
         user_id=user_id,
@@ -43,4 +50,4 @@ def upload_video():
     db.session.add(new_video)
     db.session.commit()
 
-    return jsonify(message='Video uploaded to Cloudinary and database successfully'), 201
+    return jsonify(message='Video uploaded successfully'), 201

@@ -1,5 +1,3 @@
-# models/video.py
-
 from datetime import datetime
 from database import db
 
